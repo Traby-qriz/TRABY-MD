@@ -1,0 +1,16 @@
+{
+     "name": "traby-md",
+     "version": "1.0.0",
+     "description": "TRABY-MD WhatsApp Bot",
+     "main": "index.js",
+     "scripts": {
+       "start": "node index.js"
+     },
+     "author": "Casper Qriz",
+     "license": "MIT",
+     "dependencies": {
+       "@whiskeysockets/baileys": "^6.0.0",
+       "qrcode-terminal": "^0.12.0",
+       "axios": "^1.3.4"
+     }
+}
