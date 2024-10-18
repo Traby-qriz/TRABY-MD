@@ -1,39 +1,68 @@
-const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = require("@whiskeysockets/baileys");
-   const P = require("pino");
-   const qrcode = require("qrcode-terminal");
+const { Client } = require('whatsapp-web.js');
+const qrcode = require('qrcode-terminal');
+const readline = require('readline');
 
-   async function connectToWhatsApp() {
-       const { state, saveCreds } = await useMultiFileAuthState("auth_info_baileys");
-       const sock = makeWASocket({
-           printQRInTerminal: true,
-           auth: state,
-           logger: P({ level: "silent" }),
-       });
+const client = new Client({
+    puppeteer: {
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+    }
+});
 
-       sock.ev.on("connection.update", (update) => {
-           const { connection, lastDisconnect } = update;
-           if (connection === "close") {
-               const shouldReconnect = lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
-               console.log("connection closed due to ", lastDisconnect.error, ", reconnecting ", shouldReconnect);
-               if (shouldReconnect) {
-                   connectToWhatsApp();
-               }
-           } else if (connection === "open") {
-               console.log("TRABY-MD is ready! Managed by Casper Tech, led by Casper Qriz");
-           }
-       });
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
 
-       sock.ev.on("creds.update", saveCreds);
+client.on('qr', (qr) => {
+    console.log('QR RECEIVED', qr);
+    qrcode.generate(qr, {small: true});
+});
 
-       sock.ev.on("messages.upsert", async (m) => {
-           const msg = m.messages[0];
-           if (!msg.key.fromMe && m.type === "notify") {
-               console.log("Got a message!", msg.key.remoteJid);
-               if (msg.message?.conversation === "!ping") {
-                   await sock.sendMessage(msg.key.remoteJid, { text: "pong" });
-               }
-           }
-       });
-   }
+client.on('ready', () => {
+    console.log('TRABY-MD is ready! Managed by Casper Tech, led by Casper Qriz');
+});
 
-   connectToWhatsApp();
+client.on('message', msg => {
+    if (msg.body == '!ping') {
+        msg.reply('pong');
+    }
+});
+
+const startClient = async () => {
+    console.log('Starting TRABY-MD...');
+    await client.initialize();
+
+    setTimeout(() => {
+        if (!client.info) {
+            rl.question('Choose authentication method:\n1. Scan QR Code\n2. Use Pairing Code\nEnter your choice (1 or 2): ', async (choice) => {
+                if (choice === '1') {
+                    console.log('Please scan the QR code displayed earlier.');
+                } else if (choice === '2') {
+                    rl.question('Enter your phone number with country code (e.g., 12345678901): ', async (phoneNumber) => {
+                        try {
+                            const code = await client.requestPairingCode(phoneNumber);
+                            console.log(`Your pairing code: ${code}`);
+                            console.log('Please enter this code in WhatsApp mobile app.');
+                        } catch (error) {
+                            console.error('Failed to request pairing code:', error);
+                            process.exit(1);
+                        }
+                    });
+                } else {
+                    console.log('Invalid choice. Please restart the bot and try again.');
+                    process.exit(1);
+                }
+            });
+        }
+    }, 10000);
+};
+
+startClient();
+
+process.on('SIGINT', async () => {
+    console.log('SIGINT received. Stopping TRABY-MD...');
+    await client.destroy();
+    rl.close();
+    process.exit(0);
+});
