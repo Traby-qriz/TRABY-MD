@@ -1,4 +1,4 @@
-// src/index.js
+// TRABY-MD/index.js
 
 const { Client } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
@@ -14,10 +14,15 @@ const riddlesMaker = require('./commands/riddlesMaker');
 const youtubeDownloader = require('./commands/youtubeDownloader');
 const songDownloader = require('./commands/songDownloader');
 const ownerInfo = require('./commands/ownerInfo');
+const menu = require('./commands/menu');
+const dailyQuote = require('./commands/dailyQuote');
+const weather = require('./commands/weather');
+const poll = require('./commands/poll');
+const guessNumber = require('./commands/guessNumber');
 
 const client = new Client();
 
-const SESSION_FILE_PATH = './session.json'; // File to store the session
+const SESSION_FILE_PATH = './session.json'; // File to store session
 let session;
 
 // Load session from the file if it exists
@@ -25,9 +30,9 @@ if (fs.existsSync(SESSION_FILE_PATH)) {
     session = require(SESSION_FILE_PATH);
 }
 
-// Check if the user wants to scan a QR code or using the existing session
+// Authenticate with session or prompt for QR code scan
 if (session) {
-    client.loadAuthInfo(session); // Load the existing session
+    client.loadAuthInfo(session); // Load existing session
 } else {
     console.log('No session file found. Please scan the QR code to authenticate.');
 }
@@ -55,8 +60,20 @@ client.on('ready', () => {
     console.log('TRABY-MD is ready to respond!');
 });
 
-// Handle incoming messages
+// Handle incoming messages (including pairing code)
 client.on('message', (message) => {
+    // Check for pairing code command
+    if (message.body.startsWith('!pair ')) {
+        const pairCode = message.body.split(' ')[1];
+
+        // Assuming you have logic to validate and use the pairing code
+        // Here we would just log the pairing code as an example
+        console.log(`Pairing code received: ${pairCode}`);
+        message.reply('Pairing code received! (Note: Pairing code functionality is not fully implemented in this context.)');
+        return;
+    }
+    
+    // Other command handlers
     autoStatus(client, message);
     autoReact(client, message);
     antiDelete(client, message);
@@ -67,6 +84,11 @@ client.on('message', (message) => {
     youtubeDownloader(client, message);
     songDownloader(client, message);
     ownerInfo(client, message);
+    menu(client, message); // Menu command
+    dailyQuote(client, message); // Daily quote command
+    weather(client, message); // Weather command
+    poll(client, message); // Poll command
+    guessNumber(client, message); // Guessing game command
 });
 
 // Start the WhatsApp client
